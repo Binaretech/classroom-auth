@@ -1,5 +1,7 @@
 # Classroom auth service
 
+[![Auth CI](https://github.com/Binaretech/classroom-auth/actions/workflows/go.yml/badge.svg)](https://github.com/Binaretech/classroom-auth/actions/workflows/go.yml)
+
 ## Arquitecture
 
 The full classroom is made up with three services routed by traefik, two databases and a cache store
@@ -19,12 +21,12 @@ This service is designed to serve as a login interface and to verify the authent
 
 This service depends on the `Main service` only for the login interface, also this project uses `Redis` for JWT verification
 
-Meeting the requirements just run:
+Meeting the requirements, just run:
 ```bash
 go run ./cmd/service
 ```
 
-Dockefile and docker-compose files are availables for development to mount a container with the running service and a Redis container wuth its canonical port exposed to the host for debug purposes. Just run:
+Dockefile and docker-compose files are availables for development to mount a container with the running service and a Redis container with its canonical port exposed to the host for debug purposes. In addition every change to the code will be live reloaded. Just run:
 
 ```bash
 docker-compose up -d
