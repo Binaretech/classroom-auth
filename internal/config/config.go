@@ -3,7 +3,7 @@ package config
 import (
 	"os"
 
-	"github.com/sirupsen/logrus"
+	// "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -22,7 +22,7 @@ func Initialize() {
 	}
 
 	if err := viper.ReadInConfig(); err != nil {
-		logrus.Info(err)
+		// logrus.Errorln(err)
 	}
 
 	viper.AutomaticEnv()

@@ -7,8 +7,8 @@ import (
 
 type User struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
-	Email    string             `bson:"email"`
-	Password string             `bson:"password"`
+	Email    string             `bson:"email" json:"email"`
+	Password string             `bson:"password" json:"password"`
 }
 
 func (u *User) Authenticate() (*auth.TokenDetails, error) {
