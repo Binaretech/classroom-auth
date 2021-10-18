@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,16 +15,20 @@ import (
 
 // TokenDetails Access and refresh token information
 type TokenDetails struct {
-	AccessToken  string
-	RefreshToken string
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+
 	// Unique identifier for access token
-	AccessUUID string
+	AccessUUID string `json:"accessUUID"`
+
 	// Unique identifier for refresh token
-	RefreshUUID string
+	RefreshUUID string `json:"refreshUUID"`
+
 	// AccessExpires Access token expiration
-	AccessExpires int64
+	AccessExpires int64 `json:"accessExpires"`
+
 	// RefreshExpires Refresh token expiration
-	RefreshExpires int64
+	RefreshExpires int64 `json:"refreshExpires"`
 }
 
 type AccessDetails struct {
@@ -144,13 +147,6 @@ func extractTokenMetadata(tokenString string) (td *AccessDetails, err error) {
 
 }
 
-func fetchAuth(authD *AccessDetails) (uint64, error) {
-	var userID string
-	var err error
-
-	if userID, err = cache.Get(context.Background(), authD.AccessUuid); err != nil {
-		return 0, err
-	}
-
-	return strconv.ParseUint(userID, 10, 64)
+func fetchAuth(authD *AccessDetails) (string, error) {
+	return cache.Get(context.Background(), authD.AccessUuid)
 }

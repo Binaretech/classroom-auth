@@ -30,6 +30,8 @@ func TestMain(m *testing.M) {
 	cache.Initialize()
 	database.Connect()
 
+	defer database.Close()
+
 	os.Exit(m.Run())
 }
 
@@ -66,7 +68,7 @@ func TestRegister(t *testing.T) {
 
 	raw, _ := ioutil.ReadAll(resp.Body)
 
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode, string(raw))
+	assert.Equal(t, fiber.StatusCreated, resp.StatusCode, string(raw))
 }
 
 func TestLogin(t *testing.T) {
@@ -74,7 +76,7 @@ func TestLogin(t *testing.T) {
 	response := login(t, email)
 	assert.Equal(t, response.User.Email, email)
 
-	_, authenticated := auth.VerifyToken(response.Token)
+	_, authenticated := auth.VerifyToken(response.Token.AccessToken)
 	assert.True(t, authenticated)
 }
 
@@ -83,16 +85,16 @@ func TestVerify(t *testing.T) {
 	response := login(t, email)
 
 	req := httptest.NewRequest(fiber.MethodGet, "/auth", nil)
-	req.Header.Set(fiber.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token))
+	req.Header.Set(fiber.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token.AccessToken))
 
 	resp, _ := server.App().Test(req)
 
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
 }
 
 type loginResponse struct {
-	Token string      `json:"token"`
-	User  schema.User `json:"user"`
+	Token auth.TokenDetails `json:"token"`
+	User  schema.User       `json:"user"`
 }
 
 func createTestUser(t *testing.T) string {
@@ -100,15 +102,13 @@ func createTestUser(t *testing.T) string {
 
 	upsert := true
 
-	collection := database.Users()
-	fmt.Println(collection.Database().Name())
-
 	if _, err := database.Users().ReplaceOne(
 		context.Background(),
 		bson.M{
 			"email": email,
 		},
 		bson.M{
+			"email":    email,
 			"password": hash.Bcrypt("secret"),
 		},
 		&options.ReplaceOptions{
@@ -132,17 +132,16 @@ func login(t *testing.T, email string) loginResponse {
 
 	server.App().Test(req)
 	resp, _ := server.App().Test(req)
-
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-
 	raw, _ := ioutil.ReadAll(resp.Body)
+
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode, string(raw))
 
 	response := loginResponse{}
 	json.Unmarshal(raw, &response)
 
 	assert.Equal(t, response.User.Email, email)
 
-	_, authenticated := auth.VerifyToken(response.Token)
+	_, authenticated := auth.VerifyToken(response.Token.AccessToken)
 	assert.True(t, authenticated)
 
 	return response

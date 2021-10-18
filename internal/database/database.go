@@ -2,9 +2,9 @@ package database
 
 import (
 	"context"
-	"log"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -49,6 +49,6 @@ func Close() {
 	defer cancel()
 
 	if err := client.Disconnect(ctx); err != nil {
-		log.Println(err.Error())
+		logrus.Println(err.Error())
 	}
 }
