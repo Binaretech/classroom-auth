@@ -32,7 +32,7 @@ func Connect() (err error) {
 		return
 	}
 
-	database = client.Database(viper.GetString("DB_NAME"))
+	database = client.Database(viper.GetString("DB_NAME"), &options.DatabaseOptions{})
 	return
 }
 

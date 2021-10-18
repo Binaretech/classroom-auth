@@ -8,7 +8,22 @@ services:
     ports: 
       - 80:80
 
+  mongo:
+    image: mongo:5.0.1
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: secret
+      MONGO_INITDB_DATABASE: classroom
+    volumes:
+      - classroom-mongo:/data/db
+
   redis:
     image: redis:6.2
     ports:
       - 6379:6379
+
+volumes:
+  classroom-mongo:
+    external: false
