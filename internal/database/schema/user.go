@@ -5,10 +5,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// User schema
 type User struct {
 	ID       primitive.ObjectID `bson:"_id,omitempty"`
 	Email    string             `bson:"email" json:"email"`
-	Password string             `bson:"password" json:"password"`
+	Password string             `bson:"password" json:"-"`
 }
 
 func (u *User) Authenticate() (*auth.TokenDetails, error) {

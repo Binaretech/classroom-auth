@@ -13,6 +13,7 @@ import (
 var client *mongo.Client
 var database *mongo.Database
 
+// Connect to the database
 func Connect() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -36,14 +37,17 @@ func Connect() (err error) {
 	return
 }
 
+// Collection opens a collection in the database
 func Collection(name string, opts ...*options.CollectionOptions) *mongo.Collection {
 	return database.Collection(name, opts...)
 }
 
+// Users opens users collection
 func Users() *mongo.Collection {
 	return database.Collection("users", &options.CollectionOptions{})
 }
 
+// Close database instance
 func Close() {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

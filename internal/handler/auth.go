@@ -24,6 +24,7 @@ type registerRequest struct {
 	Password string `json:"password" validate:"required,min=6"`
 }
 
+// Register a new user and returns the login tokens
 func Register(c *fiber.Ctx) error {
 	req := registerRequest{}
 	if err := c.BodyParser(&req); err != nil {
@@ -61,6 +62,7 @@ func Register(c *fiber.Ctx) error {
 	})
 }
 
+// Login authenticate the user and returns token data
 func Login(c *fiber.Ctx) error {
 	req := loginRequest{}
 
@@ -95,6 +97,7 @@ func Login(c *fiber.Ctx) error {
 	})
 }
 
+// Verify the auth status
 func Verify(c *fiber.Ctx) error {
 	details, valid := auth.Verify(c)
 
@@ -102,7 +105,7 @@ func Verify(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 
-	c.Append("X-USER", details.UserID)
+	c.Append("X-User", details.UserID)
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
