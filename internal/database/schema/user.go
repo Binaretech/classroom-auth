@@ -12,6 +12,7 @@ type User struct {
 	Password string             `bson:"password" json:"-"`
 }
 
+// Authenticate user
 func (u *User) Authenticate() (*auth.TokenDetails, error) {
 	return auth.Authenticate(u.ID.String())
 }

@@ -46,6 +46,7 @@ func Authenticate(userID string) (token *TokenDetails, err error) {
 	return
 }
 
+// VerifyToken Verify a token and return the auth state
 func VerifyToken(tokenString string) (*AccessDetails, bool) {
 	token, err := extractTokenMetadata(tokenString)
 	if err != nil {
@@ -56,10 +57,12 @@ func VerifyToken(tokenString string) (*AccessDetails, bool) {
 	return token, err == nil
 }
 
+// Verify if the token is valid
 func Verify(c *fiber.Ctx) (*AccessDetails, bool) {
 	return VerifyToken(extractToken(c))
 }
 
+// createToken Create a new token
 func createToken(userID string) (td *TokenDetails, err error) {
 
 	td = &TokenDetails{
@@ -91,6 +94,7 @@ func createToken(userID string) (td *TokenDetails, err error) {
 	return
 }
 
+// createAuth Store the authentication state in cache
 func createAuth(userID string, td *TokenDetails) error {
 	at := time.Unix(td.AccessExpires, 0)
 	rt := time.Unix(td.RefreshExpires, 0)
@@ -107,6 +111,7 @@ func createAuth(userID string, td *TokenDetails) error {
 	return nil
 }
 
+// extractToken Extract the token from the request
 func extractToken(c *fiber.Ctx) string {
 	token := strings.Split(c.Get("Authorization"), " ")
 
@@ -117,6 +122,7 @@ func extractToken(c *fiber.Ctx) string {
 	return ""
 }
 
+// verifyToken Verify the token string
 func verifyToken(token string) (*jwt.Token, error) {
 	return jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -127,6 +133,7 @@ func verifyToken(token string) (*jwt.Token, error) {
 	})
 }
 
+// extractTokenMetadata Extract the token metadata from the token string
 func extractTokenMetadata(tokenString string) (td *AccessDetails, err error) {
 	var token *jwt.Token
 	if token, err = verifyToken(tokenString); err != nil {
@@ -147,6 +154,7 @@ func extractTokenMetadata(tokenString string) (td *AccessDetails, err error) {
 
 }
 
+// fetchAuth Fetch the authentication state from cache
 func fetchAuth(authD *AccessDetails) (string, error) {
 	return cache.Get(context.Background(), authD.AccessUuid)
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// App holds the server and the routes to be used by the server to handle requests from the client side of the application
 func App() *fiber.App {
 	app := fiber.New()
 
