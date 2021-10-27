@@ -19,9 +19,10 @@ This service is designed to serve as a login interface and to verify the authent
 
 ## Running
 
-This service depends on the `Main service` only for the login interface, also this project uses `Redis` for JWT verification
+This service depends on mongodb to store user data and uses `Redis` for JWT verification
 
 Meeting the requirements, just run:
+
 ```bash
 go run ./cmd/service
 ```
@@ -31,3 +32,4 @@ Dockefile and docker-compose files are availables for development to mount a con
 ```bash
 docker-compose up -d
 ```
+
