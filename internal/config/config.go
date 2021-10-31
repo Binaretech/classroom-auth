@@ -7,6 +7,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+func init() {
+	Initialize()
+}
+
 // Initialize the configuration
 func Initialize() {
 	viper.SetDefault("port", 80)

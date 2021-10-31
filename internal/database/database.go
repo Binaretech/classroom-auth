@@ -4,11 +4,17 @@ import (
 	"context"
 	"time"
 
+	_ "github.com/Binaretech/classroom-auth/internal/config"
+
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+func init() {
+	Connect()
+}
 
 var client *mongo.Client
 var database *mongo.Database

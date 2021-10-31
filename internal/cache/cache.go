@@ -5,9 +5,15 @@ import (
 	"fmt"
 	"time"
 
+	_ "github.com/Binaretech/classroom-auth/internal/config"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
 )
+
+func init() {
+	Initialize()
+}
 
 var client *redis.Client
 
@@ -30,4 +36,8 @@ func Set(context context.Context, key string, value interface{}, expiration time
 // Get the value of the key from redis and return it as a string or an error if the key does not exist
 func Get(ctx context.Context, key string) (string, error) {
 	return client.Get(ctx, key).Result()
+}
+
+func Delete(ctx context.Context, keys ...string) (int64, error) {
+	return client.Del(ctx, keys...).Result()
 }

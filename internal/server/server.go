@@ -12,6 +12,8 @@ func App() *fiber.App {
 	auth := app.Group("/auth")
 	auth.Post("/login", handler.Login)
 	auth.Post("/register", handler.Register)
+	auth.Post("/refresh", handler.RefreshToken)
+	auth.Post("/logout", handler.Logout)
 	auth.Get("/", handler.Verify)
 
 	return app

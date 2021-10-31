@@ -32,8 +32,9 @@ type TokenDetails struct {
 }
 
 type AccessDetails struct {
-	AccessUuid string
-	UserID     string
+	AccessUUUID string
+	RefreshUUID string
+	UserID      string
 }
 
 // Authenticate a user creating authentication tokens and storing it in cache
@@ -48,7 +49,7 @@ func Authenticate(userID string) (token *TokenDetails, err error) {
 
 // VerifyToken Verify a token and return the auth state
 func VerifyToken(tokenString string) (*AccessDetails, bool) {
-	token, err := extractTokenMetadata(tokenString)
+	token, err := extractTokenMetadata(tokenString, viper.GetString("secret"))
 	if err != nil {
 		return nil, false
 	}
@@ -62,6 +63,29 @@ func Verify(c *fiber.Ctx) (*AccessDetails, bool) {
 	return VerifyToken(extractToken(c))
 }
 
+func VerifyRefreshToken(tokenString string) (string, bool) {
+	token, err := verifyToken(tokenString, viper.GetString("secret"))
+	if err != nil {
+		return "", false
+	}
+
+	if !token.Valid {
+		return "", false
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	refreshUUID := claims["refresh_uuid"].(string)
+	userID := claims["user_id"].(string)
+
+	accessUUID, err := fetchTokenData(refreshUUID)
+
+	if err != nil {
+		return "", false
+	}
+
+	return userID, DeleteAuth(refreshUUID, accessUUID) == nil
+}
+
 // createToken Create a new token
 func createToken(userID string) (td *TokenDetails, err error) {
 
@@ -73,22 +97,23 @@ func createToken(userID string) (td *TokenDetails, err error) {
 		RefreshUUID:    uuid.New().String(),
 	}
 
-	at := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"authorized":  true,
-		"access_uuid": td.AccessUUID,
-		"user_id":     userID,
-		"exp":         td.AccessExpires,
-	})
-
-	if td.AccessToken, err = at.SignedString([]byte(viper.GetString("secret"))); err != nil {
-		return
-	}
-
 	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"refresh_uuid": td.RefreshUUID,
 		"user_id":      userID,
 		"exp":          td.RefreshExpires,
 	})
+
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"authorized":   true,
+		"access_uuid":  td.AccessUUID,
+		"refresh_uuid": td.RefreshUUID,
+		"user_id":      userID,
+		"exp":          td.AccessExpires,
+	})
+
+	if td.AccessToken, err = at.SignedString([]byte(viper.GetString("secret"))); err != nil {
+		return
+	}
 
 	td.RefreshToken, err = rt.SignedString([]byte(viper.GetString("secret")))
 	return
@@ -104,7 +129,7 @@ func createAuth(userID string, td *TokenDetails) error {
 		return err
 	}
 
-	if _, err := cache.Set(context.Background(), td.RefreshUUID, userID, rt.Sub(now)); err != nil {
+	if _, err := cache.Set(context.Background(), td.RefreshUUID, td.AccessUUID, rt.Sub(now)); err != nil {
 		return err
 	}
 
@@ -123,20 +148,20 @@ func extractToken(c *fiber.Ctx) string {
 }
 
 // verifyToken Verify the token string
-func verifyToken(token string) (*jwt.Token, error) {
+func verifyToken(token, secret string) (*jwt.Token, error) {
 	return jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 
-		return []byte(viper.GetString("secret")), nil
+		return []byte(secret), nil
 	})
 }
 
 // extractTokenMetadata Extract the token metadata from the token string
-func extractTokenMetadata(tokenString string) (td *AccessDetails, err error) {
+func extractTokenMetadata(tokenString, secret string) (td *AccessDetails, err error) {
 	var token *jwt.Token
-	if token, err = verifyToken(tokenString); err != nil {
+	if token, err = verifyToken(tokenString, secret); err != nil {
 		return nil, err
 	}
 
@@ -146,15 +171,29 @@ func extractTokenMetadata(tokenString string) (td *AccessDetails, err error) {
 
 	claims := token.Claims.(jwt.MapClaims)
 	accessUuid := claims["access_uuid"].(string)
+	refreshUuid := claims["refresh_uuid"].(string)
 
 	return &AccessDetails{
-		AccessUuid: accessUuid,
-		UserID:     claims["user_id"].(string),
+		AccessUUUID: accessUuid,
+		RefreshUUID: refreshUuid,
+		UserID:      claims["user_id"].(string),
 	}, nil
 
 }
 
 // fetchAuth Fetch the authentication state from cache
 func fetchAuth(authD *AccessDetails) (string, error) {
-	return cache.Get(context.Background(), authD.AccessUuid)
+	return fetchTokenData(authD.AccessUUUID)
+}
+
+// fetchTokenData Fetch the token data from cache
+func fetchTokenData(tokenUUID string) (string, error) {
+	return cache.Get(context.Background(), tokenUUID)
+}
+
+// DeleteAuth Delete the authentication state from cache
+func DeleteAuth(tokenUUID ...string) error {
+
+	_, err := cache.Delete(context.Background(), tokenUUID...)
+	return err
 }
