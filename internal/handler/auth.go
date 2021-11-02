@@ -58,7 +58,7 @@ func Register(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(map[string]interface{}{
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"user":  user,
 		"token": token,
 	})
@@ -108,6 +108,65 @@ func Verify(c *fiber.Ctx) error {
 	}
 
 	c.Append("X-User", details.UserID)
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refreshToken" validate:"required"`
+}
+
+// RefreshToken refresh the token and returns the new token
+func RefreshToken(c *fiber.Ctx) error {
+	req := refreshRequest{}
+
+	if err := c.BodyParser(&req); err != nil {
+		return err
+	}
+
+	if err := validation.Struct(req); err != nil {
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(err)
+	}
+
+	userID, valid := auth.VerifyRefreshToken(req.RefreshToken)
+	if !valid {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	id, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		return err
+	}
+
+	users := database.Users()
+	var user schema.User
+	if err := users.FindOne(context.Background(), bson.M{"_id": id}).Decode(&user); err != nil {
+		return err
+	}
+
+	token, err := user.Authenticate()
+	if err != nil {
+		return err
+	}
+
+	return c.Status(fiber.StatusOK).JSON(map[string]interface{}{
+		"user":  user,
+		"token": token,
+	})
+
+}
+
+// Logout the user and invalidate the token
+func Logout(c *fiber.Ctx) error {
+	details, valid := auth.Verify(c)
+
+	if !valid {
+		return c.SendStatus(fiber.StatusUnauthorized)
+	}
+
+	if err := auth.DeleteAuth(details.AccessUUUID, details.RefreshUUID); err != nil {
+		return err
+	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }

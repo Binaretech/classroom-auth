@@ -12,8 +12,6 @@ import (
 	"testing"
 
 	"github.com/Binaretech/classroom-auth/internal/auth"
-	"github.com/Binaretech/classroom-auth/internal/cache"
-	"github.com/Binaretech/classroom-auth/internal/config"
 	"github.com/Binaretech/classroom-auth/internal/database"
 	"github.com/Binaretech/classroom-auth/internal/database/schema"
 	"github.com/Binaretech/classroom-auth/internal/hash"
@@ -26,10 +24,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	config.Initialize()
-	cache.Initialize()
-	database.Connect()
-
 	defer database.Close()
 
 	os.Exit(m.Run())
@@ -90,6 +84,40 @@ func TestVerify(t *testing.T) {
 	resp, _ := server.App().Test(req)
 
 	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
+}
+
+func TestLogout(t *testing.T) {
+	email := createTestUser(t)
+	response := login(t, email)
+
+	req := httptest.NewRequest(fiber.MethodPost, "/auth/logout", nil)
+	req.Header.Set(fiber.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token.AccessToken))
+
+	resp, _ := server.App().Test(req)
+
+	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
+}
+
+func TestRefreshToken(t *testing.T) {
+	email := createTestUser(t)
+	response := login(t, email)
+
+	body, _ := json.Marshal(map[string]string{
+		"refreshToken": response.Token.RefreshToken,
+	})
+
+	req := httptest.NewRequest(fiber.MethodPost, "/auth/refresh", bytes.NewBuffer(body))
+	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+
+	resp, _ := server.App().Test(req)
+	raw, _ := ioutil.ReadAll(resp.Body)
+
+	assert.Equal(t, fiber.StatusOK, resp.StatusCode, string(raw))
+
+	response = loginResponse{}
+	json.Unmarshal(raw, &response)
+
+	assert.Equal(t, response.User.Email, email)
 }
 
 type loginResponse struct {
