@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	_ "github.com/Binaretech/classroom-auth/internal/config"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/mongo"

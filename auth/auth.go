@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Binaretech/classroom-auth/internal/cache"
+	"github.com/Binaretech/classroom-auth/cache"
 	"github.com/gofiber/fiber/v2"
 	jwt "github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
@@ -90,7 +90,7 @@ func VerifyRefreshToken(tokenString string) (string, bool) {
 func createToken(userID string) (td *TokenDetails, err error) {
 
 	td = &TokenDetails{
-		AccessExpires: time.Now().Add(time.Minute * 15).Unix(),
+		AccessExpires: time.Now().Add(time.Hour * 24 * 15).Unix(),
 		AccessUUID:    uuid.New().String(),
 
 		RefreshExpires: time.Now().Add(time.Hour * 24 * 7).Unix(),

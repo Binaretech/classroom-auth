@@ -7,8 +7,8 @@ import (
 
 	ut "github.com/go-playground/universal-translator"
 
-	"github.com/Binaretech/classroom-auth/internal/database"
-	"github.com/Binaretech/classroom-auth/internal/lang"
+	"github.com/Binaretech/classroom-auth/database"
+	"github.com/Binaretech/classroom-auth/lang"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
 )

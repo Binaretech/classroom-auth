@@ -3,9 +3,9 @@ package auth_test
 import (
 	"testing"
 
-	"github.com/Binaretech/classroom-auth/internal/auth"
-	"github.com/Binaretech/classroom-auth/internal/cache"
-	"github.com/Binaretech/classroom-auth/internal/config"
+	"github.com/Binaretech/classroom-auth/auth"
+	"github.com/Binaretech/classroom-auth/cache"
+	"github.com/Binaretech/classroom-auth/config"
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/assert"
 )

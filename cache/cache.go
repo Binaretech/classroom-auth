@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/Binaretech/classroom-auth/internal/config"
+	_ "github.com/Binaretech/classroom-auth/config"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"

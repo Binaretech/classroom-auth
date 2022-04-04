@@ -3,7 +3,7 @@ package hash_test
 import (
 	"testing"
 
-	"github.com/Binaretech/classroom-auth/internal/hash"
+	"github.com/Binaretech/classroom-auth/hash"
 	"github.com/stretchr/testify/assert"
 )
 

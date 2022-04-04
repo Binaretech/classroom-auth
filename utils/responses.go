@@ -8,3 +8,9 @@ func ResponseBadRequest(c *fiber.Ctx, msg string) error {
 		"message": msg,
 	})
 }
+
+func ResponseError(c *fiber.Ctx, status int, err string) error {
+	return c.Status(status).JSON(map[string]string{
+		"error": err,
+	})
+}

@@ -1,9 +1,9 @@
 package validation
 
 import (
-	"github.com/Binaretech/classroom-auth/internal/lang"
-	"github.com/Binaretech/classroom-auth/internal/utils"
-	"github.com/Binaretech/classroom-auth/internal/validation/rule"
+	"github.com/Binaretech/classroom-auth/lang"
+	"github.com/Binaretech/classroom-auth/utils"
+	"github.com/Binaretech/classroom-auth/validation/rule"
 
 	"github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"

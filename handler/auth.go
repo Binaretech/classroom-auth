@@ -4,11 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/Binaretech/classroom-auth/internal/auth"
-	"github.com/Binaretech/classroom-auth/internal/database"
-	"github.com/Binaretech/classroom-auth/internal/database/schema"
-	"github.com/Binaretech/classroom-auth/internal/hash"
-	"github.com/Binaretech/classroom-auth/internal/validation"
+	"github.com/Binaretech/classroom-auth/auth"
+	"github.com/Binaretech/classroom-auth/database"
+	"github.com/Binaretech/classroom-auth/database/schema"
+	"github.com/Binaretech/classroom-auth/errors"
+	"github.com/Binaretech/classroom-auth/hash"
+	"github.com/Binaretech/classroom-auth/lang"
+	"github.com/Binaretech/classroom-auth/utils"
+	"github.com/Binaretech/classroom-auth/validation"
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -85,7 +88,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	if !hash.CompareHash(user.Password, req.Password) {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return utils.ResponseError(c, fiber.StatusUnauthorized, lang.Trans("login error"))
 	}
 
 	token, err := user.Authenticate()
@@ -104,11 +107,10 @@ func Verify(c *fiber.Ctx) error {
 	details, valid := auth.Verify(c)
 
 	if !valid {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return errors.NewUnauthenticatedError()
 	}
 
 	c.Append("X-User", details.UserID)
-
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

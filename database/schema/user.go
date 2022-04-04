@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"github.com/Binaretech/classroom-auth/internal/auth"
+	"github.com/Binaretech/classroom-auth/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
