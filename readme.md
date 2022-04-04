@@ -24,7 +24,13 @@ This service depends on mongodb to store user data and uses `Redis` for JWT veri
 Meeting the requirements, just run:
 
 ```bash
-go run ./cmd/service
+go run . serve
+```
+
+There are some commands availables in the development binary. To view them run:
+
+```bash
+go run .
 ```
 
 Dockefile and docker-compose files are availables for development to mount a container with the running service and a Redis container with its canonical port exposed to the host for debug purposes. In addition every change to the code will be live reloaded. Just run:
@@ -32,4 +38,3 @@ Dockefile and docker-compose files are availables for development to mount a con
 ```bash
 docker-compose up -d
 ```
-
