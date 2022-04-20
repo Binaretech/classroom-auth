@@ -1,8 +1,9 @@
 package errors
 
 import (
+	"net/http"
+
 	"github.com/Binaretech/classroom-auth/lang"
-	"github.com/gofiber/fiber/v2"
 )
 
 type ServerError interface {
@@ -67,7 +68,7 @@ func (err *InternalError) Error() string {
 }
 
 func (err *InternalError) GetCode() uint {
-	return fiber.StatusInternalServerError
+	return http.StatusInternalServerError
 }
 
 func (err *InternalError) GetMessage() interface{} {
@@ -96,7 +97,7 @@ func (err *BadRequest) Error() string {
 }
 
 func (err *BadRequest) GetCode() uint {
-	return fiber.StatusBadRequest
+	return http.StatusBadRequest
 }
 
 func (err *BadRequest) GetMessage() interface{} {
@@ -115,7 +116,7 @@ func (err *Unauthenticated) Error() string {
 }
 
 func (err *Unauthenticated) GetCode() uint {
-	return fiber.StatusUnauthorized
+	return http.StatusUnauthorized
 }
 
 func (err *Unauthenticated) GetMessage() interface{} {

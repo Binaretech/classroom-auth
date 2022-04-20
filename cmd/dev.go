@@ -68,7 +68,7 @@ var serve = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		defer database.Close()
 
-		server.App().Listen(fmt.Sprintf(":%s", viper.GetString("port")))
+		server.App().Start(fmt.Sprintf(":%s", viper.GetString("port")))
 	},
 }
 

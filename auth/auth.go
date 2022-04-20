@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/Binaretech/classroom-auth/cache"
-	"github.com/gofiber/fiber/v2"
 	jwt "github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 )
 
@@ -59,7 +59,7 @@ func VerifyToken(tokenString string) (*AccessDetails, bool) {
 }
 
 // Verify if the token is valid
-func Verify(c *fiber.Ctx) (*AccessDetails, bool) {
+func Verify(c echo.Context) (*AccessDetails, bool) {
 	return VerifyToken(extractToken(c))
 }
 
@@ -137,8 +137,8 @@ func createAuth(userID string, td *TokenDetails) error {
 }
 
 // extractToken Extract the token from the request
-func extractToken(c *fiber.Ctx) string {
-	token := strings.Split(c.Get("Authorization"), " ")
+func extractToken(c echo.Context) string {
+	token := strings.Split(c.Request().Header.Get("Authorization"), " ")
 
 	if len(token) == 2 {
 		return token[1]

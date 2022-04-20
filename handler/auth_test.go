@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
@@ -14,10 +14,10 @@ import (
 	"github.com/Binaretech/classroom-auth/auth"
 	"github.com/Binaretech/classroom-auth/database"
 	"github.com/Binaretech/classroom-auth/database/schema"
+	"github.com/Binaretech/classroom-auth/handler"
 	"github.com/Binaretech/classroom-auth/hash"
-	"github.com/Binaretech/classroom-auth/server"
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/gofiber/fiber/v2"
+	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -55,14 +55,16 @@ func TestRegister(t *testing.T) {
 		"password": "secret",
 	})
 
-	req := httptest.NewRequest(fiber.MethodPost, "/auth/register", bytes.NewBuffer(body))
-	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	req := httptest.NewRequest(http.MethodPost, "/auth/register", bytes.NewBuffer(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-	resp, _ := server.App().Test(req)
+	rec := httptest.NewRecorder()
 
-	raw, _ := ioutil.ReadAll(resp.Body)
+	c := echo.New().NewContext(req, rec)
 
-	assert.Equal(t, fiber.StatusCreated, resp.StatusCode, string(raw))
+	if assert.NoError(t, handler.Register(c)) {
+		assert.Equal(t, http.StatusCreated, rec.Code)
+	}
 }
 
 func TestLogin(t *testing.T) {
@@ -78,24 +80,32 @@ func TestVerify(t *testing.T) {
 	email := createTestUser(t)
 	response := login(t, email)
 
-	req := httptest.NewRequest(fiber.MethodGet, "/auth", nil)
-	req.Header.Set(fiber.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token.AccessToken))
+	req := httptest.NewRequest(http.MethodGet, "/auth", nil)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token.AccessToken))
 
-	resp, _ := server.App().Test(req)
+	rec := httptest.NewRecorder()
 
-	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
+	c := echo.New().NewContext(req, rec)
+
+	if assert.NoError(t, handler.Verify(c)) {
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	}
 }
 
 func TestLogout(t *testing.T) {
 	email := createTestUser(t)
 	response := login(t, email)
 
-	req := httptest.NewRequest(fiber.MethodPost, "/auth/logout", nil)
-	req.Header.Set(fiber.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token.AccessToken))
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	req.Header.Set(echo.HeaderAuthorization, fmt.Sprintf("Bearer: %s", response.Token.AccessToken))
 
-	resp, _ := server.App().Test(req)
+	rec := httptest.NewRecorder()
 
-	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
+	c := echo.New().NewContext(req, rec)
+
+	if assert.NoError(t, handler.Logout(c)) {
+		assert.Equal(t, http.StatusNoContent, rec.Code)
+	}
 }
 
 func TestRefreshToken(t *testing.T) {
@@ -106,18 +116,20 @@ func TestRefreshToken(t *testing.T) {
 		"refreshToken": response.Token.RefreshToken,
 	})
 
-	req := httptest.NewRequest(fiber.MethodPost, "/auth/refresh", bytes.NewBuffer(body))
-	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", bytes.NewBuffer(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-	resp, _ := server.App().Test(req)
-	raw, _ := ioutil.ReadAll(resp.Body)
+	rec := httptest.NewRecorder()
 
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode, string(raw))
+	c := echo.New().NewContext(req, rec)
 
-	response = loginResponse{}
-	json.Unmarshal(raw, &response)
+	if assert.NoError(t, handler.RefreshToken(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		response = loginResponse{}
+		json.Unmarshal(rec.Body.Bytes(), &response)
+		assert.Equal(t, response.User.Email, email)
+	}
 
-	assert.Equal(t, response.User.Email, email)
 }
 
 type loginResponse struct {
@@ -155,20 +167,20 @@ func login(t *testing.T, email string) loginResponse {
 		"password": "secret",
 	})
 
-	req := httptest.NewRequest(fiber.MethodPost, "/auth/login", bytes.NewBuffer(body))
-	req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBuffer(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 
-	server.App().Test(req)
-	resp, _ := server.App().Test(req)
-	raw, _ := ioutil.ReadAll(resp.Body)
+	rec := httptest.NewRecorder()
 
-	assert.Equal(t, fiber.StatusOK, resp.StatusCode, string(raw))
+	c := echo.New().NewContext(req, rec)
+
+	assert.NoError(t, handler.Login(c))
+	assert.Equal(t, http.StatusOK, rec.Code)
 
 	response := loginResponse{}
-	json.Unmarshal(raw, &response)
+	json.Unmarshal(rec.Body.Bytes(), &response)
 
 	assert.Equal(t, response.User.Email, email)
-
 	_, authenticated := auth.VerifyToken(response.Token.AccessToken)
 	assert.True(t, authenticated)
 

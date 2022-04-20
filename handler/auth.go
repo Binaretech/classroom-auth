@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/Binaretech/classroom-auth/auth"
@@ -12,7 +13,7 @@ import (
 	"github.com/Binaretech/classroom-auth/lang"
 	"github.com/Binaretech/classroom-auth/utils"
 	"github.com/Binaretech/classroom-auth/validation"
-	"github.com/gofiber/fiber/v2"
+	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -30,14 +31,14 @@ type registerRequest struct {
 }
 
 // Register a new user and returns the login tokens
-func Register(c *fiber.Ctx) error {
+func Register(c echo.Context) error {
 	req := registerRequest{}
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return err
 	}
 
 	if err := validation.Struct(req); err != nil {
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(err)
+		return c.JSON(http.StatusUnprocessableEntity, err)
 	}
 
 	collection := database.Users()
@@ -61,22 +62,22 @@ func Register(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+	return c.JSON(http.StatusCreated, echo.Map{
 		"user":  user,
 		"token": token,
 	})
 }
 
 // Login authenticate the user and returns token data
-func Login(c *fiber.Ctx) error {
+func Login(c echo.Context) error {
 	req := loginRequest{}
 
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return err
 	}
 
 	if err := validation.Struct(req); err != nil {
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(err)
+		return c.JSON(http.StatusUnprocessableEntity, err)
 	}
 
 	users := database.Users()
@@ -88,7 +89,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	if !hash.CompareHash(user.Password, req.Password) {
-		return utils.ResponseError(c, fiber.StatusUnauthorized, lang.Trans("login error"))
+		return utils.ResponseError(c, http.StatusUnauthorized, lang.Trans("login error"))
 	}
 
 	token, err := user.Authenticate()
@@ -96,22 +97,22 @@ func Login(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusOK).JSON(map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"user":  user,
 		"token": token,
 	})
 }
 
 // Verify the auth status
-func Verify(c *fiber.Ctx) error {
+func Verify(c echo.Context) error {
 	details, valid := auth.Verify(c)
 
 	if !valid {
 		return errors.NewUnauthenticatedError()
 	}
 
-	c.Append("X-User", details.UserID)
-	return c.SendStatus(fiber.StatusNoContent)
+	c.Request().Header.Add("X-User", details.UserID)
+	return c.NoContent(http.StatusNoContent)
 }
 
 type refreshRequest struct {
@@ -119,20 +120,20 @@ type refreshRequest struct {
 }
 
 // RefreshToken refresh the token and returns the new token
-func RefreshToken(c *fiber.Ctx) error {
+func RefreshToken(c echo.Context) error {
 	req := refreshRequest{}
 
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return err
 	}
 
 	if err := validation.Struct(req); err != nil {
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(err)
+		return c.JSON(http.StatusUnprocessableEntity, err)
 	}
 
 	userID, valid := auth.VerifyRefreshToken(req.RefreshToken)
 	if !valid {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	id, err := primitive.ObjectIDFromHex(userID)
@@ -151,7 +152,7 @@ func RefreshToken(c *fiber.Ctx) error {
 		return err
 	}
 
-	return c.Status(fiber.StatusOK).JSON(map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"user":  user,
 		"token": token,
 	})
@@ -159,16 +160,16 @@ func RefreshToken(c *fiber.Ctx) error {
 }
 
 // Logout the user and invalidate the token
-func Logout(c *fiber.Ctx) error {
+func Logout(c echo.Context) error {
 	details, valid := auth.Verify(c)
 
 	if !valid {
-		return c.SendStatus(fiber.StatusUnauthorized)
+		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	if err := auth.DeleteAuth(details.AccessUUUID, details.RefreshUUID); err != nil {
 		return err
 	}
 
-	return c.SendStatus(fiber.StatusNoContent)
+	return c.NoContent(http.StatusNoContent)
 }

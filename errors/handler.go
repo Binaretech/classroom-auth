@@ -2,14 +2,15 @@ package errors
 
 import (
 	"encoding/json"
+	"net/http"
 
 	"github.com/Binaretech/classroom-auth/lang"
-	"github.com/gofiber/fiber/v2"
+	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
 )
 
 // Handler catch all the errors and returns a propper response based on the error type
-func Handler(c *fiber.Ctx, err error) error {
+func Handler(err error, c echo.Context) error {
 
 	if e, ok := err.(*json.UnmarshalTypeError); ok {
 		return response(c, NewBadRequestWrapped(lang.Trans("invalid data type"), e))
@@ -19,11 +20,11 @@ func Handler(c *fiber.Ctx, err error) error {
 		return response(c, e)
 	}
 
-	return response(c, WrapError(err, lang.Trans("internal error"), fiber.StatusInternalServerError))
+	return response(c, WrapError(err, lang.Trans("internal error"), http.StatusInternalServerError))
 }
 
-func response(c *fiber.Ctx, err ServerError) error {
-	message := fiber.Map{
+func response(c echo.Context, err ServerError) error {
+	message := echo.Map{
 		"error": err.GetMessage(),
 	}
 
@@ -31,5 +32,5 @@ func response(c *fiber.Ctx, err ServerError) error {
 		message["debug"] = err.Error()
 	}
 
-	return c.Status(int(err.GetCode())).JSON(message)
+	return c.JSON(int(err.GetCode()), message)
 }
