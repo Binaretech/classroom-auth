@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  bin = "./tmp/auth serve"
+  bin = "./tmp/auth"
   cmd = "go build  -buildvcs=false -o ./tmp/auth ."
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor"]

@@ -1,39 +1,17 @@
+//go:build !production
+
 package cmd
 
 import (
 	"context"
-	"fmt"
-	"os"
 
-	"github.com/Binaretech/classroom-auth/config"
 	"github.com/Binaretech/classroom-auth/database"
 	"github.com/Binaretech/classroom-auth/database/schema"
 	"github.com/Binaretech/classroom-auth/hash"
-	"github.com/Binaretech/classroom-auth/server"
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-
-	_ "github.com/Binaretech/classroom-auth/config"
 )
-
-var rootCmd = &cobra.Command{
-	Use:   "Classroom Auth",
-	Short: "Authentication service",
-}
-
-func execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
-func Setup() {
-	config.Initialize()
-	execute()
-}
 
 var testUsers = &cobra.Command{
 	Use:   "create:users",
@@ -62,17 +40,6 @@ var testUsers = &cobra.Command{
 	},
 }
 
-var serve = &cobra.Command{
-	Use:   "serve",
-	Short: "Start the server",
-	Run: func(cmd *cobra.Command, args []string) {
-		defer database.Close()
-
-		server.App().Start(fmt.Sprintf(":%s", viper.GetString("port")))
-	},
-}
-
 func init() {
 	rootCmd.AddCommand(testUsers)
-	rootCmd.AddCommand(serve)
 }

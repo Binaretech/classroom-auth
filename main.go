@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	cmd.Setup()
+	cmd.Execute()
 }
