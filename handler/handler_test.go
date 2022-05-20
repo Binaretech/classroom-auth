@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/Binaretech/classroom-auth/auth"
@@ -16,39 +15,29 @@ import (
 	"github.com/Binaretech/classroom-auth/database/schema"
 	"github.com/Binaretech/classroom-auth/handler"
 	"github.com/Binaretech/classroom-auth/hash"
+	"github.com/Binaretech/classroom-auth/validation"
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func TestMain(m *testing.M) {
-	defer database.Close()
+func createContext(req *http.Request, rec *httptest.ResponseRecorder, db *mongo.Database) echo.Context {
+	app := echo.New()
+	app.Validator = validation.SetUpValidator(db)
 
-	os.Exit(m.Run())
+	return app.NewContext(req, rec)
 }
 
 func TestRegister(t *testing.T) {
-	collection := database.Users()
+	client, _ := database.Connect()
+	defer database.Close(client)
+
+	db := database.GetDatabase(client)
 
 	email := gofakeit.Email()
-
-	upsert := true
-	if _, err := collection.ReplaceOne(
-		context.Background(),
-		bson.M{
-			"email": email,
-		},
-		bson.M{
-			"password": hash.Bcrypt("secret"),
-		},
-		&options.ReplaceOptions{
-			Upsert: &upsert,
-		},
-	); err != nil {
-		t.Error(err.Error())
-	}
 
 	body, _ := json.Marshal(map[string]string{
 		"email":    email,
@@ -60,9 +49,11 @@ func TestRegister(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 
-	c := echo.New().NewContext(req, rec)
+	c := createContext(req, rec, db)
 
-	if assert.NoError(t, handler.Register(c)) {
+	h := handler.NewHandler(db)
+
+	if assert.NoError(t, h.Register(c)) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 	}
 }
@@ -77,6 +68,11 @@ func TestLogin(t *testing.T) {
 }
 
 func TestVerify(t *testing.T) {
+	client, _ := database.Connect()
+	defer database.Close(client)
+
+	db := database.GetDatabase(client)
+
 	email := createTestUser(t)
 	response := login(t, email)
 
@@ -85,14 +81,21 @@ func TestVerify(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 
-	c := echo.New().NewContext(req, rec)
+	c := createContext(req, rec, db)
 
-	if assert.NoError(t, handler.Verify(c)) {
+	h := handler.NewHandler(db)
+
+	if assert.NoError(t, h.Verify(c)) {
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 }
 
 func TestLogout(t *testing.T) {
+	client, _ := database.Connect()
+	defer database.Close(client)
+
+	db := database.GetDatabase(client)
+
 	email := createTestUser(t)
 	response := login(t, email)
 
@@ -101,14 +104,21 @@ func TestLogout(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 
-	c := echo.New().NewContext(req, rec)
+	c := createContext(req, rec, db)
 
-	if assert.NoError(t, handler.Logout(c)) {
+	h := handler.NewHandler(db)
+
+	if assert.NoError(t, h.Logout(c)) {
 		assert.Equal(t, http.StatusNoContent, rec.Code)
 	}
 }
 
 func TestRefreshToken(t *testing.T) {
+	client, _ := database.Connect()
+	defer database.Close(client)
+
+	db := database.GetDatabase(client)
+
 	email := createTestUser(t)
 	response := login(t, email)
 
@@ -121,9 +131,11 @@ func TestRefreshToken(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 
-	c := echo.New().NewContext(req, rec)
+	h := handler.NewHandler(db)
 
-	if assert.NoError(t, handler.RefreshToken(c)) {
+	c := createContext(req, rec, db)
+
+	if assert.NoError(t, h.RefreshToken(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		response = loginResponse{}
 		json.Unmarshal(rec.Body.Bytes(), &response)
@@ -138,11 +150,16 @@ type loginResponse struct {
 }
 
 func createTestUser(t *testing.T) string {
+	client, _ := database.Connect()
+	defer database.Close(client)
+
+	db := database.GetDatabase(client)
+
 	email := gofakeit.Email()
 
 	upsert := true
 
-	if _, err := database.Users().ReplaceOne(
+	if _, err := database.Users(db).ReplaceOne(
 		context.Background(),
 		bson.M{
 			"email": email,
@@ -162,6 +179,11 @@ func createTestUser(t *testing.T) string {
 }
 
 func login(t *testing.T, email string) loginResponse {
+	client, _ := database.Connect()
+	defer database.Close(client)
+
+	db := database.GetDatabase(client)
+
 	body, _ := json.Marshal(map[string]string{
 		"email":    email,
 		"password": "secret",
@@ -172,9 +194,10 @@ func login(t *testing.T, email string) loginResponse {
 
 	rec := httptest.NewRecorder()
 
-	c := echo.New().NewContext(req, rec)
+	c := createContext(req, rec, db)
 
-	assert.NoError(t, handler.Login(c))
+	h := handler.NewHandler(db)
+	assert.NoError(t, h.Login(c))
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	response := loginResponse{}

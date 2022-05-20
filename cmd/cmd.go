@@ -19,9 +19,18 @@ var rootCmd = &cobra.Command{
 	Short: "Authentication service",
 	Run: func(cmd *cobra.Command, args []string) {
 		config.Initialize()
-		defer database.Close()
 
-		logrus.Fatalln(server.App().Start(fmt.Sprintf(":%s", viper.GetString("port"))))
+		client, err := database.Connect()
+
+		if err != nil {
+			logrus.Fatalln(err.Error())
+		}
+
+		defer database.Close(client)
+
+		database := database.GetDatabase(client)
+
+		logrus.Fatalln(server.App(database).Start(fmt.Sprintf(":%s", viper.GetString("port"))))
 	},
 }
 

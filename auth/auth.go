@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/viper"
+	"google.golang.org/api/oauth2/v2"
 )
 
 // TokenDetails Access and refresh token information
@@ -196,4 +198,14 @@ func DeleteAuth(tokenUUID ...string) error {
 
 	_, err := cache.Delete(context.Background(), tokenUUID...)
 	return err
+}
+
+func GoogleAuth(idToken string) (*oauth2.Tokeninfo, error) {
+	oauth2Service, _ := oauth2.New(&http.Client{})
+
+	tokenInfoCall := oauth2Service.Tokeninfo()
+	tokenInfoCall.IdToken(idToken)
+
+	return tokenInfoCall.Do()
+
 }

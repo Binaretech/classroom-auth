@@ -1,9 +1,13 @@
 package validation
 
 import (
+	"net/http"
+
 	"github.com/Binaretech/classroom-auth/lang"
 	"github.com/Binaretech/classroom-auth/utils"
 	"github.com/Binaretech/classroom-auth/validation/rule"
+	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
@@ -17,25 +21,18 @@ type ErrorResponse struct {
 	ValidationErrors map[string][]string `json:"validationErrors"`
 }
 
-// SetUpValidator configures and returns an instance of `validator.Validate`
-func SetUpValidator() *validator.Validate {
-	validate := validator.New()
-
-	rule.RegisterExistsRule(validate)
-	rule.RegisterUniqueRule(validate)
-
-	es_translations.RegisterDefaultTranslations(validate, lang.Translator("es"))
-	en_translations.RegisterDefaultTranslations(validate, lang.Translator("en"))
-
-	return validate
+type Validator struct {
+	validate *validator.Validate
 }
 
-// Struct validate struct and return an ErrorResponse if there are a validation error
-func Struct(request interface{}) *ErrorResponse {
-	errors := map[string][]string{}
-	validate := SetUpValidator()
+func newValidator(validate *validator.Validate) *Validator {
+	return &Validator{validate: validate}
+}
 
-	if err := validate.Struct(request); err != nil {
+func (v *Validator) Validate(data any) error {
+	errors := map[string][]string{}
+
+	if err := v.validate.Struct(data); err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
 			name := utils.LowerCaseInitial(err.Field())
 			if _, ok := errors[name]; !ok {
@@ -50,5 +47,18 @@ func Struct(request interface{}) *ErrorResponse {
 		return nil
 	}
 
-	return &ErrorResponse{ValidationErrors: errors}
+	return echo.NewHTTPError(http.StatusUnprocessableEntity, &ErrorResponse{ValidationErrors: errors})
+}
+
+// SetUpValidator configures and returns an instance of `validator.Validate`
+func SetUpValidator(db *mongo.Database) *Validator {
+	validate := validator.New()
+
+	rule.RegisterExistsRule(db, validate)
+	rule.RegisterUniqueRule(db, validate)
+
+	es_translations.RegisterDefaultTranslations(validate, lang.Translator("es"))
+	en_translations.RegisterDefaultTranslations(validate, lang.Translator("en"))
+
+	return newValidator(validate)
 }

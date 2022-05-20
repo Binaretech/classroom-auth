@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/Binaretech/classroom-auth/auth"
 	"github.com/Binaretech/classroom-auth/database"
@@ -12,75 +11,68 @@ import (
 	"github.com/Binaretech/classroom-auth/hash"
 	"github.com/Binaretech/classroom-auth/lang"
 	"github.com/Binaretech/classroom-auth/utils"
-	"github.com/Binaretech/classroom-auth/validation"
 	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// loginRequest is the request body for login endpoint
-type loginRequest struct {
-	Email    string `json:"email" validate:"required,exists=users"`
-	Password string `json:"password" validate:"required"`
+type AuthHandler struct {
+	db *mongo.Database
 }
 
-// registerRequest is the request body for register endpoint
-type registerRequest struct {
-	Email    string `json:"email" validate:"required,email,unique=users"`
-	Password string `json:"password" validate:"required,min=6"`
+func NewHandler(db *mongo.Database) *AuthHandler {
+	return &AuthHandler{
+		db: db,
+	}
 }
 
 // Register a new user and returns the login tokens
-func Register(c echo.Context) error {
+func (h *AuthHandler) Register(c echo.Context) error {
 	req := registerRequest{}
 	if err := c.Bind(&req); err != nil {
 		return err
 	}
 
-	if err := validation.Struct(req); err != nil {
+	if err := c.Validate(req); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err)
 	}
 
-	collection := database.Users()
+	collection := database.Users(h.db)
 
 	user := schema.User{
 		Email:    req.Email,
 		Password: hash.Bcrypt(req.Password),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	if err := user.Create(collection); err != nil {
+		return err
+	}
 
-	if result, err := collection.InsertOne(ctx, &user); err != nil {
+	if token, err := user.Authenticate(); err != nil {
 		return err
 	} else {
-		user.ID = result.InsertedID.(primitive.ObjectID)
+		return c.JSON(http.StatusCreated, echo.Map{
+			"user":  user,
+			"token": token,
+		})
 	}
 
-	token, err := user.Authenticate()
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusCreated, echo.Map{
-		"user":  user,
-		"token": token,
-	})
 }
 
 // Login authenticate the user and returns token data
-func Login(c echo.Context) error {
+func (h *AuthHandler) Login(c echo.Context) error {
 	req := loginRequest{}
 
 	if err := c.Bind(&req); err != nil {
 		return err
 	}
 
-	if err := validation.Struct(req); err != nil {
+	if err := c.Validate(req); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err)
 	}
 
-	users := database.Users()
+	users := database.Users(h.db)
 
 	var user schema.User
 
@@ -104,14 +96,14 @@ func Login(c echo.Context) error {
 }
 
 // Verify the auth status
-func Verify(c echo.Context) error {
+func (h *AuthHandler) Verify(c echo.Context) error {
 	details, valid := auth.Verify(c)
 
 	if !valid {
 		return errors.NewUnauthenticatedError()
 	}
 
-	c.Request().Header.Add("X-User", details.UserID)
+	c.Response().Header().Add("X-User", details.UserID)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -120,14 +112,14 @@ type refreshRequest struct {
 }
 
 // RefreshToken refresh the token and returns the new token
-func RefreshToken(c echo.Context) error {
+func (h *AuthHandler) RefreshToken(c echo.Context) error {
 	req := refreshRequest{}
 
 	if err := c.Bind(&req); err != nil {
 		return err
 	}
 
-	if err := validation.Struct(req); err != nil {
+	if err := c.Validate(req); err != nil {
 		return c.JSON(http.StatusUnprocessableEntity, err)
 	}
 
@@ -141,7 +133,7 @@ func RefreshToken(c echo.Context) error {
 		return err
 	}
 
-	users := database.Users()
+	users := database.Users(h.db)
 	var user schema.User
 	if err := users.FindOne(context.Background(), bson.M{"_id": id}).Decode(&user); err != nil {
 		return err
@@ -159,8 +151,57 @@ func RefreshToken(c echo.Context) error {
 
 }
 
+func (h *AuthHandler) GoogleAuth(c echo.Context) error {
+	req := googleAuthRequest{}
+
+	if err := c.Bind(&req); err != nil {
+		return err
+	}
+
+	if err := c.Validate(req); err != nil {
+		return err
+	}
+
+	var email string
+	var id string
+
+	if info, err := auth.GoogleAuth(req.IdToken); err != nil {
+		return err
+	} else {
+		email = info.Email
+		id = info.UserId
+	}
+
+	users := database.Users(h.db)
+	user := new(schema.User)
+
+	if err := user.FindByEmail(users, email); err == mongo.ErrNoDocuments {
+		user = &schema.User{
+			Email:    email,
+			Password: hash.Bcrypt(id),
+		}
+
+		if err := user.Create(users); err != nil {
+			return err
+		}
+
+	} else if err != nil {
+		return err
+	}
+
+	if token, err := user.Authenticate(); err != nil {
+		return err
+	} else {
+		return c.JSON(http.StatusOK, map[string]any{
+			"user":  user,
+			"token": token,
+		})
+	}
+
+}
+
 // Logout the user and invalidate the token
-func Logout(c echo.Context) error {
+func (h *AuthHandler) Logout(c echo.Context) error {
 	details, valid := auth.Verify(c)
 
 	if !valid {

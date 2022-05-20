@@ -7,18 +7,18 @@ import (
 
 	ut "github.com/go-playground/universal-translator"
 
-	"github.com/Binaretech/classroom-auth/database"
 	"github.com/Binaretech/classroom-auth/lang"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // exists checks if the field exists in database
-func exists() func(validator.FieldLevel) bool {
+func exists(db *mongo.Database) func(validator.FieldLevel) bool {
 	return func(fl validator.FieldLevel) bool {
 		params := strings.Split(fl.Param(), ";")
 
-		collection := database.Collection(params[0])
+		collection := db.Collection(params[0])
 
 		if collection == nil {
 			return false
@@ -40,8 +40,8 @@ func exists() func(validator.FieldLevel) bool {
 	}
 }
 
-func RegisterExistsRule(validate *validator.Validate) {
-	validate.RegisterValidation("exists", exists())
+func RegisterExistsRule(db *mongo.Database, validate *validator.Validate) {
+	validate.RegisterValidation("exists", exists(db))
 
 	validate.RegisterTranslation("exists", lang.Translator("es"), func(ut ut.Translator) error {
 		return ut.Add("exists", "El {0} no existe.", true)

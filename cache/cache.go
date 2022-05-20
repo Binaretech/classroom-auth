@@ -41,3 +41,7 @@ func Get(ctx context.Context, key string) (string, error) {
 func Delete(ctx context.Context, keys ...string) (int64, error) {
 	return client.Del(ctx, keys...).Result()
 }
+
+func Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd {
+	return client.Scan(ctx, cursor, match, count)
+}

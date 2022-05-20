@@ -10,19 +10,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func init() {
-	Connect()
-}
-
-var client *mongo.Client
-var database *mongo.Database
-
 // Connect to the database
-func Connect() (err error) {
+func Connect() (*mongo.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	client, err = mongo.Connect(ctx,
+	return mongo.Connect(ctx,
 		options.Client().
 			SetHosts([]string{viper.GetString("DB_HOST")}).
 			SetAuth(
@@ -32,27 +25,25 @@ func Connect() (err error) {
 				},
 			),
 	)
+}
 
-	if err != nil {
-		return
-	}
+func GetDatabase(client *mongo.Client) *mongo.Database {
+	return client.Database(viper.GetString("DB_NAME"), &options.DatabaseOptions{})
 
-	database = client.Database(viper.GetString("DB_NAME"), &options.DatabaseOptions{})
-	return
 }
 
 // Collection opens a collection in the database
-func Collection(name string, opts ...*options.CollectionOptions) *mongo.Collection {
+func Collection(database *mongo.Database, name string, opts ...*options.CollectionOptions) *mongo.Collection {
 	return database.Collection(name, opts...)
 }
 
 // Users opens users collection
-func Users() *mongo.Collection {
+func Users(database *mongo.Database) *mongo.Collection {
 	return database.Collection("users", &options.CollectionOptions{})
 }
 
 // Close database instance
-func Close() {
+func Close(client *mongo.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 

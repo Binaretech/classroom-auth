@@ -18,6 +18,11 @@ var testUsers = &cobra.Command{
 	Short: "Insert users in database",
 	Run: func(cmd *cobra.Command, args []string) {
 
+		client, _ := database.Connect()
+		db := database.GetDatabase(client)
+
+		defer database.Close(client)
+
 		id, _ := primitive.ObjectIDFromHex("61a406ea18f8a0bdf663e144")
 
 		users := []interface{}{
@@ -35,7 +40,7 @@ var testUsers = &cobra.Command{
 			})
 		}
 
-		collection := database.Users()
+		collection := database.Users(db)
 		collection.InsertMany(context.Background(), users)
 	},
 }
